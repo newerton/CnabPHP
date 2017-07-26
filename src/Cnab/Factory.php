@@ -9,13 +9,16 @@ class Factory
     public static function getCnabFormatPath()
     {
         if (self::$cnabFormatPath === null) {
-            $optionA = dirname(__FILE__).'/../../../cnab_yaml';
-            $optionB = dirname(__FILE__).'/../../vendor/andersondanilo/cnab_yaml';
+            $optionA = dirname(__FILE__) . '/../../../cnab_yaml';
+            $optionB = dirname(__FILE__) . '/../../vendor/andersondanilo/cnab_yaml';
+            $optionC = dirname(__FILE__) . '/../../../../andersondanilo/cnab_yaml';
 
             if (file_exists($optionA)) {
                 self::setCnabFormatPath($optionA);
             } elseif (file_exists($optionB)) {
                 self::setCnabFormatPath($optionB);
+            } elseif (file_exists($optionC)) {
+                self::setCnabFormatPath($optionC);
             } else {
                 throw new \Exception('cnab_yaml não está instalado ou não foi configurado');
             }
