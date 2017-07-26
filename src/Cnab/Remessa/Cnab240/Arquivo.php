@@ -2,6 +2,10 @@
 
 namespace Cnab\Remessa\Cnab240;
 
+/**
+ * Class Arquivo
+ * @package Cnab\Remessa\Cnab240
+ */
 class Arquivo implements \Cnab\Remessa\IArquivo
 {
     public $headerArquivo;
@@ -10,20 +14,17 @@ class Arquivo implements \Cnab\Remessa\IArquivo
     public $trailerLote;
     public $trailerArquivo;
 
-    private $_data_gravacao;
-    private $_data_geracao;
     public $banco;
     public $codigo_banco;
     public $configuracao = array();
     public $layoutVersao;
-    const   QUEBRA_LINHA = "\r\n";
+    const QUEBRA_LINHA = "\r\n";
 
     public function __construct($codigo_banco, $layoutVersao = null)
     {
         $this->codigo_banco = $codigo_banco;
         $this->layoutVersao = $layoutVersao;
         $this->banco = \Cnab\Banco::getBanco($this->codigo_banco);
-        //$this->data_gravacao = date('dmY');
     }
 
     public function configure(array $params)
@@ -38,7 +39,7 @@ class Arquivo implements \Cnab\Remessa\IArquivo
             $campos[] = 'codigo_cedente';
         }
 
-        if($this->codigo_banco == \Cnab\Banco::BANCO_DO_BRASIL) {
+        if ($this->codigo_banco == \Cnab\Banco::BANCO_DO_BRASIL) {
             $campos[] = 'codigo_convenio';
             $campos[] = 'codigo_carteira';
             $campos[] = 'variacao_carteira';
@@ -53,7 +54,14 @@ class Arquivo implements \Cnab\Remessa\IArquivo
             $campos[] = 'numero_sequencial_arquivo';
         }
 
-
+        if ($this->codigo_banco == \Cnab\Banco::SANTANDER) {
+            $campos[] = 'codigo_cedente';
+            $campos[] = 'agencia';
+            $campos[] = 'agencia_dv';
+            $campos[] = 'conta';
+            $campos[] = 'conta_dv';
+            $campos[] = 'numero_sequencial_arquivo';
+        }
 
         foreach ($campos as $campo) {
             if (array_key_exists($campo, $params)) {
@@ -62,13 +70,13 @@ class Arquivo implements \Cnab\Remessa\IArquivo
                 }
                 $this->configuracao[$campo] = $params[$campo];
             } else {
-                throw new \Exception('Configuração "'.$campo.'" need to be set');
+                throw new \Exception('Configuração "' . $campo . '" need to be set');
             }
         }
 
         foreach ($campos as $key) {
             if (!array_key_exists($key, $params)) {
-                throw new Exception('Configuração "'.$key.'" dont exists');
+                throw new \Exception('Configuração "' . $key . '" dont exists');
             }
         }
 
@@ -86,7 +94,7 @@ class Arquivo implements \Cnab\Remessa\IArquivo
         $this->headerArquivo->agencia = $this->configuracao['agencia'];
         $this->headerArquivo->agencia_dv = $this->configuracao['agencia_dv'];
 
-        if($this->codigo_banco == \Cnab\Banco::BANCO_DO_BRASIL) {
+        if ($this->codigo_banco == \Cnab\Banco::BANCO_DO_BRASIL) {
             $this->headerArquivo->codigo_convenio = $this->configuracao['codigo_convenio'];
             $this->headerArquivo->carteira = $this->configuracao['codigo_carteira'];
             $this->headerArquivo->variacao_carteira = $this->configuracao['variacao_carteira'];
@@ -94,7 +102,12 @@ class Arquivo implements \Cnab\Remessa\IArquivo
             $this->headerArquivo->conta_dv = $this->configuracao['conta_dv'];
         }
 
-        if($this->codigo_banco == \Cnab\Banco::CEF) {
+        if ($this->codigo_banco == \Cnab\Banco::SANTANDER) {
+            $this->headerArquivo->conta = $this->configuracao['conta'];
+            $this->headerArquivo->conta_dv = $this->configuracao['conta_dv'];
+        }
+
+        if ($this->codigo_banco == \Cnab\Banco::CEF || $this->codigo_banco == \Cnab\Banco::SANTANDER) {
             $this->headerArquivo->codigo_cedente = $this->configuracao['codigo_cedente'];
         }
 
@@ -106,7 +119,7 @@ class Arquivo implements \Cnab\Remessa\IArquivo
         $this->headerArquivo->numero_sequencial_arquivo = $this->configuracao['numero_sequencial_arquivo'];
 
         if ($this->codigo_banco == \Cnab\Banco::CEF) {
-            if($this->layoutVersao === 'sigcb') {
+            if ($this->layoutVersao === 'sigcb') {
                 $this->headerArquivo->codigo_convenio = 0;
             } else {
                 $codigoConvenio = sprintf(
@@ -132,6 +145,12 @@ class Arquivo implements \Cnab\Remessa\IArquivo
         if ($this->codigo_banco == \Cnab\Banco::CEF) {
             $this->headerLote->codigo_convenio = $this->headerArquivo->codigo_cedente;
             $this->headerLote->codigo_cedente = $this->headerArquivo->codigo_cedente;
+        }
+
+        if ($this->codigo_banco == \Cnab\Banco::SANTANDER) {
+            $this->headerLote->codigo_cedente = $this->configuracao['codigo_cedente'];
+            $this->headerLote->conta = $this->headerArquivo->conta;
+            $this->headerLote->conta_dv = $this->headerArquivo->conta_dv;
         }
 
         if ($this->codigo_banco == \Cnab\Banco::BANCO_DO_BRASIL) {
@@ -207,22 +226,31 @@ class Arquivo implements \Cnab\Remessa\IArquivo
             $detalhe->segmento_p->codigo_cedente = $this->headerArquivo->codigo_cedente;
         }
 
-        if ($this->codigo_banco == \Cnab\Banco::BANCO_DO_BRASIL) {
+        if ($this->codigo_banco == \Cnab\Banco::BANCO_DO_BRASIL || $this->codigo_banco == \Cnab\Banco::SANTANDER) {
             $detalhe->segmento_p->conta = $this->headerArquivo->conta;
             $detalhe->segmento_p->conta_dv = $this->headerArquivo->conta_dv;
         }
 
+        if ($this->codigo_banco == \Cnab\Banco::SANTANDER) {
+            $detalhe->segmento_p->conta_cobranca = $this->headerArquivo->conta;
+            $detalhe->segmento_p->conta_cobranca_dv = $this->headerArquivo->conta_dv;
+        }
+
         $detalhe->segmento_p->nosso_numero = $this->formatarNossoNumero($boleto['nosso_numero']);
 
-        if($this->codigo_banco == \Cnab\Banco::BANCO_DO_BRASIL) {
+        if ($this->codigo_banco == \Cnab\Banco::BANCO_DO_BRASIL) {
             // Informar 1 – para carteira 11/12 na modalidade Simples; 2 ou 3 – para carteira 11/17 modalidade
             // Vinculada/Caucionada e carteira 31; 4 – para carteira 11/17 modalidade Descontada e carteira 51; e 7 – para
             // carteira 17 modalidade Simples.
-            if($boleto['carteira'] == 17 && $boleto['codigo_carteira'] == \Cnab\CodigoCarteira::COBRANCA_SIMPLES) {
+            if ($boleto['carteira'] == 17 && $boleto['codigo_carteira'] == \Cnab\CodigoCarteira::COBRANCA_SIMPLES) {
                 $detalhe->segmento_p->codigo_carteira = 7;
             } else {
                 $detalhe->segmento_p->codigo_carteira = $boleto['codigo_carteira'];
             }
+        }
+
+        if ($this->codigo_banco == \Cnab\Banco::SANTANDER) {
+            $detalhe->segmento_p->codigo_carteira = $boleto['codigo_carteira'];
         }
 
         if ($this->layoutVersao === 'sigcb' && $this->codigo_banco == \Cnab\Banco::CEF) {
@@ -258,7 +286,7 @@ class Arquivo implements \Cnab\Remessa\IArquivo
         } else {
             $detalhe->segmento_p->codigo_desconto_1 = 0; // sem desconto
             $detalhe->segmento_p->data_desconto_1 = 0;
-            $detalhe->segmento_p->valor_desconto_1 = 0;
+            $detalhe->segmento_p->valor_desconto_1 = 9;
         }
         $detalhe->segmento_p->valor_abatimento = 0;
         $detalhe->segmento_p->uso_empresa = $boleto['numero_documento'];
@@ -278,8 +306,8 @@ class Arquivo implements \Cnab\Remessa\IArquivo
             $detalhe->segmento_p->codigo_baixa = 0;
             $detalhe->segmento_p->prazo_baixa = 0;
         } else {
-            if(isset($boleto['baixar_apos_dias'])) {
-                if($boleto['baixar_apos_dias'] === false) {
+            if (isset($boleto['baixar_apos_dias'])) {
+                if ($boleto['baixar_apos_dias'] === false) {
                     // não baixar / devolver
                     $detalhe->segmento_p->codigo_baixa = 2;
                     $detalhe->segmento_p->prazo_baixa = 0;
@@ -303,7 +331,7 @@ class Arquivo implements \Cnab\Remessa\IArquivo
         } elseif ($tipo == 'baixa') {
             $detalhe->segmento_p->codigo_ocorrencia = 2;
         } else {
-            throw new \Exception('Tipo de detalhe inválido: '.$tipo);
+            throw new \Exception('Tipo de detalhe inválido: ' . $tipo);
         }
 
         // SEGMENTO Q -------------------------------
@@ -343,20 +371,31 @@ class Arquivo implements \Cnab\Remessa\IArquivo
             $detalhe->segmento_r->data_multa = 0;
         }
 
+        if ($this->codigo_banco == \Cnab\Banco::SANTANDER) {
+            if ($boleto['valor_desconto'] > 0) {
+                $detalhe->segmento_r->data_desconto_02 = $boleto['data_desconto'];
+                $detalhe->segmento_r->valor_desconto_02 = $boleto['valor_desconto'];
+            } else {
+                // sem desconto
+                $detalhe->segmento_r->data_desconto_02 = 0;
+                $detalhe->segmento_r->valor_desconto_02 = 0;
+            }
+        }
+
         $this->detalhes[] = $detalhe;
     }
 
     public function formatarNossoNumero($nossoNumero)
     {
-        if(!$nossoNumero)
+        if (!$nossoNumero)
             return $nossoNumero;
 
         if ($this->codigo_banco == \Cnab\Banco::BANCO_DO_BRASIL) {
             $codigo_convenio = $this->configuracao['codigo_convenio'];
 
-            if(strlen($codigo_convenio) <= 4) {
+            if (strlen($codigo_convenio) <= 4) {
                 # Convênio de 4 digitos
-                if(strlen($nossoNumero) > 7) {
+                if (strlen($nossoNumero) > 7) {
                     throw new \InvalidArgumentException(
                         "Para número de convênio de 4 posições o nosso número deve ter no máximo 7 posições (sem o digito)"
                     );
@@ -365,7 +404,7 @@ class Arquivo implements \Cnab\Remessa\IArquivo
                 return $number . $this->mod11($number);
             } elseif (strlen($codigo_convenio) <= 6) {
                 # Convênio de 6 digitos
-                if(strlen($nossoNumero) > 5) {
+                if (strlen($nossoNumero) > 5) {
                     throw new \InvalidArgumentException(
                         "Para número de convênio de 6 posições o nosso número deve ter no máximo 5 posições (sem o digito)"
                     );
@@ -373,7 +412,7 @@ class Arquivo implements \Cnab\Remessa\IArquivo
                 $number = sprintf('%06d%05d', $codigo_convenio, $nossoNumero);
                 return $number . $this->mod11($number);
             } else {
-                if(strlen($nossoNumero) > 10) {
+                if (strlen($nossoNumero) > 10) {
                     throw new \InvalidArgumentException(
                         "Para número de convênio de 7 posições o nosso número deve ter no máximo 10 posições"
                     );
@@ -405,23 +444,21 @@ class Arquivo implements \Cnab\Remessa\IArquivo
     {
         return preg_replace(
             array(
-                    '/\xc3[\x80-\x85]/',
-                    '/\xc3\x87/',
-                    '/\xc3[\x88-\x8b]/',
-                    '/\xc3[\x8c-\x8f]/',
-                    '/\xc3([\x92-\x96]|\x98)/',
-                    '/\xc3[\x99-\x9c]/',
+                '/\xc3[\x80-\x85]/',
+                '/\xc3\x87/',
+                '/\xc3[\x88-\x8b]/',
+                '/\xc3[\x8c-\x8f]/',
+                '/\xc3([\x92-\x96]|\x98)/',
+                '/\xc3[\x99-\x9c]/',
 
-                    '/\xc3[\xa0-\xa5]/',
-                    '/\xc3\xa7/',
-                    '/\xc3[\xa8-\xab]/',
-                    '/\xc3[\xac-\xaf]/',
-                    '/\xc3([\xb2-\xb6]|\xb8)/',
-                    '/\xc3[\xb9-\xbc]/',
-                    '/\xC2\xAA/',
-                    '/\xC2\xBA/',
+                '/\xc3[\xa0-\xa5]/',
+                '/\xc3\xa7/',
+                '/\xc3[\xa8-\xab]/',
+                '/\xc3[\xac-\xaf]/',
+                '/\xc3([\xb2-\xb6]|\xb8)/',
+                '/\xc3[\xb9-\xbc]/',
             ),
-            str_split('ACEIOUaceiouao', 1),
+            str_split('ACEIOUaceiou', 1),
             $this->isUtf8($string) ? $string : utf8_encode($string)
         );
     }
@@ -438,7 +475,7 @@ class Arquivo implements \Cnab\Remessa\IArquivo
                 | [\xF1-\xF3][\x80-\xBF]{3}
                 | \xF4[\x80-\x8F][\x80-\xBF]{2}
                 )*$%xs',
-                $string
+            $string
         );
     }
 
@@ -458,8 +495,8 @@ class Arquivo implements \Cnab\Remessa\IArquivo
             throw new \InvalidArgumentException($this->headerLote->last_error);
         }
 
-        $dados = $this->headerArquivo->getEncoded().self::QUEBRA_LINHA;
-        $dados .= $this->headerLote->getEncoded().self::QUEBRA_LINHA;
+        $dados = $this->headerArquivo->getEncoded() . self::QUEBRA_LINHA;
+        $dados .= $this->headerLote->getEncoded() . self::QUEBRA_LINHA;
 
         foreach ($this->detalhes as $detalhe) {
             ++$qtde_titulo_cobranca_simples;
@@ -473,12 +510,12 @@ class Arquivo implements \Cnab\Remessa\IArquivo
                 throw new \InvalidArgumentException($detalhe->last_error);
             }
 
-            $dados .= $detalhe->getEncoded().self::QUEBRA_LINHA;
+            $dados .= $detalhe->getEncoded() . self::QUEBRA_LINHA;
         }
 
         $this->trailerLote->qtde_registro_lote = $qtde_registro_lote;
 
-        if ($this->codigo_banco == \Cnab\Banco::CEF) {
+        if ($this->codigo_banco == \Cnab\Banco::CEF || $this->codigo_banco == \Cnab\Banco::SANTANDER) {
             $this->trailerLote->qtde_titulo_cobranca_simples = $qtde_titulo_cobranca_simples;
             $this->trailerLote->valor_total_titulo_simples = $valor_total_titulo_simples;
             $this->trailerLote->qtde_titulo_cobranca_caucionada = 0;
@@ -498,8 +535,8 @@ class Arquivo implements \Cnab\Remessa\IArquivo
             throw new \InvalidArgumentException($this->trailerArquivo->last_error);
         }
 
-        $dados .= $this->trailerLote->getEncoded().self::QUEBRA_LINHA;
-        $dados .= $this->trailerArquivo->getEncoded().self::QUEBRA_LINHA;
+        $dados .= $this->trailerLote->getEncoded() . self::QUEBRA_LINHA;
+        $dados .= $this->trailerArquivo->getEncoded() . self::QUEBRA_LINHA;
 
         return $dados;
     }
