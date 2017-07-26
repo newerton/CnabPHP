@@ -44,5 +44,14 @@ class Especie
     const BB_DUPLICATA_MERCANTIL = 2;
     const BB_DUPLICATA_DE_SERVICO = 4;
 
+    // Santander
+    const SANTANDER_DUPLICATA = '01';
+    const SANTANDER_NOTA_PROMISSORIA = '02';
+    const SANTANDER_NOTA_DE_SEGURO = '03';
+    const SANTANDER_RECIBO = '05';
+    const SANTANDER_DUPLICATA_DE_SERVICO = '06';
+    const SANTANDER_LETRA_DE_CAMBIO = '07';
+    
+    //Outros
     const CNAB240_OUTROS = '99';
 }
