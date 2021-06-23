@@ -44,7 +44,7 @@ class Arquivo implements \Cnab\Remessa\IArquivo
                 $campos[] = 'sequencial_remessa';
                 break;
             case \Cnab\Banco::SANTANDER:
-                $campos[] = 'complemento_conta';
+                $campos[] = 'codigo_transmissao';
                 $campos[] = 'conta_movimento';
                 $campos[] = 'conta_cobranca';
                 $campos[] = 'codigo_transmissao';
